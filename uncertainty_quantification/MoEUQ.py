@@ -4,7 +4,6 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.nn import functional as F
 
-
 class MultiLayerPerceptron(torch.nn.Module):
 
     def __init__(self, input_dim, embed_dims, dropout=0, output_layer=False):
