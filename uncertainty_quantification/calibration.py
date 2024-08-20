@@ -215,8 +215,6 @@ def picp(y_pred_mean, bias_lower, bias_upper, y_true):
     picp = (((y_true < y_pred_upper.reshape(-1)) & (y_true > y_pred_lower.reshape(-1))) + 0).sum() / len(y_true)
     return picp
 
-
-
 def find_non_padding_route(route):
     for i in range(len(route) - 1):
         if route[i] == 0 and route[i + 1] == 0:
@@ -256,8 +254,8 @@ class CalibrateModel:
         specify the path of predicted paths
         """
 
-        held_generated_nodes = np.load(ws + '/results/drl_generated_paths/2024-08-20 15:40:04/planned_path_drl_held.npy',  allow_pickle=True).tolist()
-        test_generated_nodes = np.load( ws + '/results/drl_generated_paths/2024-08-20 15:40:04/planned_path_drl_test.npy', allow_pickle=True).tolist()
+        held_generated_nodes = np.load(ws + '/results/drl_generated_paths/planned_path_drl_held.npy',  allow_pickle=True).tolist()
+        test_generated_nodes = np.load( ws + '/results/drl_generated_paths/planned_path_drl_test.npy', allow_pickle=True).tolist()
 
         """
         generated test set
