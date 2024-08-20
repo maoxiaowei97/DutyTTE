@@ -1,7 +1,6 @@
 import numpy as np
 from collections import deque
 from gensim.models.word2vec import Word2Vec
-import gensim
 import pickle
 from gensim.models.callbacks import CallbackAny2Vec
 import random
