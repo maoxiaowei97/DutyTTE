@@ -11,3 +11,5 @@ torch==2.1.2
 tqdm==4.66.1
 transformers==4.36.2
 transformers-stream-generator==0.0.4
+gensim==4.3.2
+networkx==3.1
