@@ -7,6 +7,7 @@ from transformers.models.gpt2 import GPT2Model
 from torch.distributions import Categorical
 import numpy as np
 import pickle
+from utils.argparser import ws
 def LCSSDistance(a, b):
     lena = len(a)
     lenb = len(b)
@@ -102,7 +103,7 @@ class Planner(nn.Module):
             nn.ReLU(),
             nn.Linear(int(0.5 * hidden_dim), self.max_deg).to(self.device)
         )
-        self.traffic_states = pickle.load(open("/data/maodawei/ODTUQ_0806/release_data_0818/nbr_time_dict.pkl", "rb"))
+        self.traffic_states = pickle.load(open(ws + "/processed_data/CityA_nbr_travel_time_dict.pkl/nbr_time_dict.pkl", "rb"))
 
         if pretrain_path is not None:
             node2vec = pickle.load(open(pretrain_path, "rb"))
@@ -270,13 +271,12 @@ class Planner(nn.Module):
             greedy_length = torch.ones([batch_size]).long().to(self.device) * self.max_decode_step
             for i in range(1, self.max_decode_step):
                 prefix = greedy_xs[:, :i].clone()
-                # prefix_emb = origs_emb
                 prefix_emb = self.x_embedding(prefix)
                 transformer_outputs = self.transformer(
                     inputs_embeds=prefix_emb,
                 )
-                hidden = transformer_outputs['last_hidden_state']  # b h c = x_embed
-                hidden = hidden[:, -1, :]  # only need the last one
+                hidden = transformer_outputs['last_hidden_state']
+                hidden = hidden[:, -1, :]
                 distances = (self.locations[prefix[:, -1]] - self.locations[dests]).square().sum(dim=-1, keepdim=True).sqrt() * 100
                 distances_feature = self.distance_mlp(distances)
                 directions = (self.adj_dir[prefix[:, -1]] * self.tv_dir[prefix[:, -1], dests].unsqueeze(1)).sum(dim=-1, keepdim=False)
@@ -296,7 +296,7 @@ class Planner(nn.Module):
 
                 out_logits_gpt = self.out_mlp(feed)
                 out_logits_gpt = torch.masked_fill(out_logits_gpt, self.mask[prefix[:, -1]], value=-1e20)
-                gpt_probs = torch.softmax(out_logits_gpt, dim=-1)  # transformer只往前找一步
+                gpt_probs = torch.softmax(out_logits_gpt, dim=-1)
                 gpt_probs = gpt_probs / gpt_probs.sum(dim=1, keepdim=True)
                 actions = torch.argmax(gpt_probs, 1)
                 greedy_xs[:, i] = torch.Tensor([self.ord_to_v[prefix[k, -1].item()][actions[k]] for k in range(batch_size)]).long().to(self.device)
@@ -304,7 +304,7 @@ class Planner(nn.Module):
                 greedy_stop = greedy_stop | (greedy_xs[:, i] == dests)
                 if greedy_stop.all():
                     break
-            greedy_xs_list = [greedy_xs[k, :greedy_length[k]].cpu().tolist() for k in range(batch_size)]  # MLE loss不需要得到最终路线
+            greedy_xs_list = [greedy_xs[k, :greedy_length[k]].cpu().tolist() for k in range(batch_size)]
             greedy_xs_list_refined = self.refine(greedy_xs_list, dests.cpu().tolist())
 
         """
