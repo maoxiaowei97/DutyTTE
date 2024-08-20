@@ -134,7 +134,7 @@ class Trainer:
         print('local time: ', local_time)
         early_stop = EarlyStop(mode='maximize', patience=self.early_stop)
         optimizer = torch.optim.Adam(self.model.parameters(), lr)
-        print('rl plan start..')
+        print('drl path prediction start..')
         iter, train_loss_avg = 0, 0
         dir_check(ws + f"/model_params/drl_path_prediction/{local_time}/")
         self.model.train()
@@ -170,7 +170,7 @@ class Trainer:
                         dtw_path = DTWDistance(self.model.G, planned_path,  ground.tolist()[:int(seg_num_path.item())])
                         mean_dtw += dtw_path
                         max_dtw = max(max_dtw, dtw_path)
-                        mean_lcs += lcs_path  # 一条路线的lcs
+                        mean_lcs += lcs_path
                         max_lcs = max(max_lcs, lcs_path)
                     mean_lcs /= len(nodes)
                     mean_dtw /= len(nodes)
@@ -178,7 +178,7 @@ class Trainer:
                     dtw_list.extend([mean_dtw])
                 print(f"epoch: {epoch}, val mean LCS: {np.mean(lcs_list)}, val max LCS: {max_lcs}",
                       f"val mean DTW: {np.mean(dtw_list)}", f"val max DTW: {max_dtw}")
-                is_best_change = early_stop.append(np.mean(lcs_list)) # 越大越好
+                is_best_change = early_stop.append(np.mean(lcs_list))
                 if is_best_change:
                     best_valmodel_name = ws + f"/model_params/drl_path_prediction/{local_time}/finished_{epoch}.pth"
                     torch.save(self.model.state_dict(), best_valmodel_name)
@@ -295,8 +295,8 @@ class EarlyStop():
         self.patience = patience
         self.metric_lst = []
         self.stop_flag = False
-        self.best_epoch = -1  # the best epoch
-        self.is_best_change = False  # whether the best change compare to the last epoch
+        self.best_epoch = -1
+        self.is_best_change = False
 
     def append(self, x):
         self.metric_lst.append(x)
