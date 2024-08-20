@@ -43,12 +43,6 @@ def DTWDistance(G, s1, s2):
 
 class Planner(nn.Module):
 
-    def _calculate_unit_dir_vec(self, ya, xa, yb, xb):
-        denom = ((yb - ya) ** 2 + (xb - xa) ** 2) ** 0.5
-        if denom == 0.:
-            return (0., 0.)
-        return ((yb - ya) / denom, (xb - xa) / denom)
-
     def __init__(self, G: nx.Graph, A: torch.Tensor,  device: torch.device, args, pretrain_path):
         super().__init__()
         self.max_decode_step = args.max_decode_step
@@ -130,36 +124,6 @@ class Planner(nn.Module):
         for x_id, (x, d, ts) in enumerate(zip(xs, day, start_ts)):
             traffic_state[x_id] = self.traffic_states[d][ts][x]
         return torch.tensor(traffic_state, dtype=torch.float32).to(self.device)
-
-    def test_lcs(self, nodes, segment_num, od):
-        with torch.autograd.no_grad():
-            oris = od[:, 0].tolist()
-            dests = od[:, 1].tolist()
-            paths_planned = []
-            paths_planned.extend(self.plan(oris, dests))
-            mean_lcs = 0.
-            max_lcs = 0.
-            for k, (planned_path, ground, seg_num_path) in enumerate(zip(paths_planned, nodes, segment_num)):
-                lcs = LCSSDistance(planned_path, ground.tolist()[:int(seg_num_path.item())])
-                mean_lcs += lcs
-                max_lcs = max(max_lcs, lcs)
-            mean_lcs /= len(nodes)
-        return mean_lcs, max_lcs, paths_planned
-
-    def test_dtw(self, nodes, segment_num, od):
-        with torch.autograd.no_grad():
-            oris = od[:, 0].tolist()
-            dests = od[:, 1].tolist()
-            paths_planned = []
-            paths_planned.extend(self.plan(oris, dests))
-            mean_dtw = 0.
-            max_dtw = 0.
-            for k, (planned_path, ground, seg_num_path) in enumerate(zip(paths_planned, nodes, segment_num)):
-                dtw = DTWDistance(self.G, planned_path[:int(seg_num_path.item())], ground.tolist())
-                mean_dtw += dtw
-                max_dtw = max(max_dtw, max_dtw)
-            mean_dtw /= len(nodes)
-        return mean_dtw, max_dtw
 
 
     def forward(self, xs, segment_num, od, day, start_ts):
@@ -338,7 +302,7 @@ class Planner(nn.Module):
         multi_sample_log_probs = torch.sum(log_probs, dim = 1) / refined_sample_length.clone()
         policy_loss = - torch.mean(torch.tensor(np.array(multi_sample_reward_all) - np.array(greedy_lcs_reward_all)).float().to(self.device) * multi_sample_log_probs)
 
-        return mle_loss  + policy_loss * self.rl_ratio
+        return mle_loss + policy_loss * self.rl_ratio
 
     def inference(self, origs, dests, day, start_ts):
         with torch.no_grad():
@@ -360,7 +324,6 @@ class Planner(nn.Module):
             for i in range(1, self.max_decode_step):
                 prefix = xs[:, :i]
                 prefix_emb = self.x_embedding(prefix)
-                # proposal from transformer
                 transformer_outputs = self.transformer(
                     inputs_embeds=prefix_emb,
                 )
