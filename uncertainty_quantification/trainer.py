@@ -119,9 +119,9 @@ class Trainer:
         specify the path of predicted paths
         """
 
-        train_generated_nodes = np.load( ws + '/results/drl_generated_paths/2024-08-20 15:40:04/planned_path_drl_train.npy', allow_pickle=True).tolist()
-        val_generated_nodes = np.load(ws +'/results/drl_generated_paths/2024-08-20 15:40:04/planned_path_drl_val.npy',  allow_pickle=True).tolist()
-        test_generated_nodes = np.load( ws +'/results/drl_generated_paths/2024-08-20 15:40:04/planned_path_drl_test.npy', allow_pickle=True).tolist()
+        train_generated_nodes = np.load( ws + '/results/drl_generated_paths/planned_path_drl_train.npy', allow_pickle=True).tolist()
+        val_generated_nodes = np.load(ws +'/results/drl_generated_paths/planned_path_drl_val.npy',  allow_pickle=True).tolist()
+        test_generated_nodes = np.load( ws +'/results/drl_generated_paths/planned_path_drl_test.npy', allow_pickle=True).tolist()
 
         def loss_fn(y_pred_mean, bias_lower, bias_upper, y_true):
             y_pred_upper =  y_pred_mean + bias_upper
