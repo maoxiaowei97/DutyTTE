@@ -1,7 +1,7 @@
 from os.path import join
 import torch
-from loader_path_generation.dataset import TrajFastDataset
-from utils.argparser_path_generation_0804 import get_argparser
+from loader.dataset import TrajFastDataset
+from utils.argparser import get_argparser
 import os
 import numpy as np
 from datetime import datetime
