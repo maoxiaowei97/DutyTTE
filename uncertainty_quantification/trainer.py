@@ -102,6 +102,8 @@ class Trainer:
         """
         shrinked_segment_travel_time_path = ws + '/processed_data/CityA_segment_travel_time_distribution_dict_shrinked.npy'
         segment_travel_time_dict = np.load(shrinked_segment_travel_time_path, allow_pickle=True).item()
+        shrinked_segment_travel_time_hourly_path = ws + '/processed_data/CityA_segment_travel_time_distribution_dict_hourly.npy'
+        segment_travel_time_hourly_dict = np.load(shrinked_segment_travel_time_hourly_path, allow_pickle=True).item()
         """
         2.shrinked segment index
         """
@@ -212,8 +214,10 @@ class Trainer:
                         path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_dict[(start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)][-1])]))
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
-                        path_generated_segment_travel_time_mean.extend([float(20)])
+                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
+                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
             train_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             train_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             train_generated_segments.append(path_generated_segments)
@@ -283,8 +287,10 @@ class Trainer:
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(
                             start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
-                        path_generated_segment_travel_time_mean.extend([float(20)])
+                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
+                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
             val_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             val_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             val_generated_segments.append(path_generated_segments)
@@ -352,8 +358,10 @@ class Trainer:
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(
                             start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
-                        path_generated_segment_travel_time_mean.extend([float(20)])
+                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
+                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
+                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
             test_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             test_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             test_generated_segments.append(path_generated_segments)
