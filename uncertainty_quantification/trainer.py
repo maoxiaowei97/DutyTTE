@@ -102,8 +102,6 @@ class Trainer:
         """
         shrinked_segment_travel_time_path = ws + '/processed_data/CityA_segment_travel_time_distribution_dict_shrinked.npy'
         segment_travel_time_dict = np.load(shrinked_segment_travel_time_path, allow_pickle=True).item()
-        shrinked_segment_travel_time_hourly_path = ws + '/processed_data/CityA_segment_travel_time_distribution_dict_hourly.npy'
-        segment_travel_time_hourly_dict = np.load(shrinked_segment_travel_time_hourly_path, allow_pickle=True).item()
         """
         2.shrinked segment index
         """
@@ -120,7 +118,6 @@ class Trainer:
         """
         specify the path of predicted paths
         """
-
         train_generated_nodes = np.load( ws + '/results/drl_generated_paths/planned_path_drl_train.npy', allow_pickle=True).tolist()
         val_generated_nodes = np.load(ws +'/results/drl_generated_paths/planned_path_drl_val.npy',  allow_pickle=True).tolist()
         test_generated_nodes = np.load( ws +'/results/drl_generated_paths/planned_path_drl_test.npy', allow_pickle=True).tolist()
@@ -214,10 +211,8 @@ class Trainer:
                         path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_dict[(start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)][-1])]))
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
-                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
+                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
+                        path_generated_segment_travel_time_mean.extend([float(20)])
             train_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             train_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             train_generated_segments.append(path_generated_segments)
@@ -287,10 +282,8 @@ class Trainer:
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(
                             start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
-                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
+                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
+                        path_generated_segment_travel_time_mean.extend([float(20)])
             val_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             val_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             val_generated_segments.append(path_generated_segments)
@@ -358,10 +351,8 @@ class Trainer:
                         path_generated_segment_travel_time_distribution.extend([segment_travel_time_dict[(
                             start_day[0], int(start_10min_ts[0]) - 1, current_node, next_node)]])
                     else:
-                        path_generated_segment_travel_time_mean.extend(([float(segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)][-1])]))
-                        path_generated_segment_travel_time_distribution.extend([segment_travel_time_hourly_dict[(
-                        int(start_10min_ts[0]) // 6, current_node, next_node)]])
+                        path_generated_segment_travel_time_distribution.append([20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 20])
+                        path_generated_segment_travel_time_mean.extend([float(20)])
             test_generated_segment_travel_time_mean.append(path_generated_segment_travel_time_mean)
             test_generated_segment_travel_time_distribution.append(path_generated_segment_travel_time_distribution)
             test_generated_segments.append(path_generated_segments)
@@ -383,8 +374,10 @@ class Trainer:
             print('train epoch {}'.format(epoch))
             for batch in tqdm(traindataloader):
                 xs, segment_travel_time_mean, total_ts, segment_travel_time, segment_num, ts_10min, od = batch
-                predict_mean, bias_lower, bias_upper = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
+                predict_mean, bias_lower, bias_upper, load_balancing_loss = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
                 mis_loss = loss_fn(predict_mean.reshape(-1), bias_lower.reshape(-1), bias_upper.reshape(-1), total_ts.reshape(-1).float().to(self.device))
+                if args.load_balancing:
+                    mis_loss += load_balancing_loss * args.load_balancing_weight
                 optimizer.zero_grad()
                 mis_loss.backward()
                 optimizer.step()
@@ -400,7 +393,7 @@ class Trainer:
                 with torch.no_grad():
                     for batch in tqdm(valdataloader):
                         xs, segment_travel_time_mean, total_ts, segment_travel_time, segment_num, ts_10min, od = batch
-                        predict_mean, bias_lower, bias_upper = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
+                        predict_mean, bias_lower, bias_upper, load_balancing_loss = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
                         total_ts = pad_sequence(total_ts, batch_first=True, padding_value=0).float()
 
                         predicts += predict_mean.reshape(-1).tolist()
@@ -452,7 +445,7 @@ class Trainer:
         with torch.no_grad():
             for batch in tqdm(testdataloader):
                 xs, segment_travel_time_mean, total_ts, segment_travel_time, segment_num, ts_10min, od = batch
-                predict_mean, bias_lower, bias_upper = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
+                predict_mean, bias_lower, bias_upper, load_balancing_loss = self.model(xs, segment_travel_time, segment_num, ts_10min, od, self.device)
                 total_ts = pad_sequence(total_ts, batch_first=True, padding_value=0).float()
 
                 predicts += predict_mean.reshape(-1).tolist()
