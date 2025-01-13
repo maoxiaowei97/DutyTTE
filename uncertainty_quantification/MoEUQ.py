@@ -58,7 +58,7 @@ class NoisyTopkRouter(nn.Module):
         zeros = torch.full_like(noisy_logits, float('-inf'))
         sparse_logits = zeros.scatter(-1, indices, top_k_logits)
         router_output = F.softmax(sparse_logits, dim=-1)
-        return router_output, indices
+        return router_output, indices, F.softmax(logits, dim=-1)
 
 class Expert(nn.Module):
     """ An MLP is a simple linear layer followed by a non-linearity i.e. each Expert """
@@ -84,7 +84,7 @@ class SparseMoE(nn.Module):
         self.top_k = top_k
 
     def forward(self, x):
-        gating_output, indices = self.router(x)
+        gating_output, indices, softmax_gating_output = self.router(x)
         final_output = torch.zeros_like(x)
 
         flat_x = x.view(-1, x.size(-1))
@@ -103,7 +103,7 @@ class SparseMoE(nn.Module):
 
                 final_output[expert_mask] += weighted_output.squeeze(1)
 
-        return final_output
+        return final_output, softmax_gating_output
 
 class MoEUQ_network(torch.nn.Module):
 
@@ -125,7 +125,7 @@ class MoEUQ_network(torch.nn.Module):
         segment_dims =  12691 + 2
         node_dims = 4600 + 1
         self.distribution_embed = nn.Linear(args.m * 2 + 1 , n_embed)
-        self.smoe = SparseMoE(reg_input_dim, num_experts, top_k)
+        self.MoEUQ = SparseMoE(reg_input_dim, num_experts, top_k)
 
         self.segment_embedding = nn.Embedding(segment_dims, id_embed_dim)
         self.node_embedding = nn.Embedding(node_dims, id_embed_dim)
@@ -156,14 +156,26 @@ class MoEUQ_network(torch.nn.Module):
         recurrent_input = self.all_mlp(all_input)
 
         packed_all_input = pack_padded_sequence(recurrent_input, number_of_roadsegments.reshape(-1).cpu(), enforce_sorted=False, batch_first=True)
-        out, _ = self.lstm(packed_all_input)
+        seq_out, _ = self.lstm(packed_all_input)
 
-        output, _ = pad_packed_sequence(out, batch_first=True)
-        output = self.smoe(output)
-        output = torch.sum(output, dim=1)
+        seq_out, _ = pad_packed_sequence(seq_out, batch_first=True)
+        B, N_valid = seq_out.shape[0], seq_out.shape[1]
+        seq_out, softmax_gating_output = self.MoEUQ(seq_out)
 
-        hat_y = self.regressor(deep_output, output)
-        bias_upper = self.regressor_upper(deep_output, output)
-        bias_lower = self.regressor_lower(deep_output, output)
+        mask_indices = torch.arange(N_valid).unsqueeze(0).expand(B, -1)
+        mask = (mask_indices < number_of_roadsegments).unsqueeze(-1).float()
+        seq_out = torch.sum(seq_out * mask.to(seq_out.device), dim=1)
 
-        return hat_y, bias_lower, bias_upper
+        hat_y = self.regressor(deep_output, seq_out)
+        bias_upper = self.regressor_upper(deep_output, seq_out)
+        bias_lower = self.regressor_lower(deep_output, seq_out)
+
+        valid_gating_output = softmax_gating_output * mask.to(seq_out.device)
+        expert_load = torch.sum(valid_gating_output, dim=(0, 1))
+        total_load = torch.sum(expert_load)
+        normalized_load = expert_load / (total_load + 1e-9)
+        num_experts = softmax_gating_output.shape[-1]
+        ideal_load = 1.0 / num_experts
+        load_balancing_loss = torch.sum(normalized_load * torch.log(normalized_load / ideal_load + 1e-9)) # normalization term for gating
+
+        return hat_y, bias_lower, bias_upper, load_balancing_loss
