@@ -31,11 +31,12 @@ def get_argparser() -> argparse.ArgumentParser:
     parser.add_argument("-method", type=str, help="method: cold, naive", default="MoEUQ")
     parser.add_argument("-x_emb_dim", type=int, help="vertex embedding dim", default=100)
     parser.add_argument("-E_U", type=int, help="embedding dim in MoEUQ", default=256)
-    parser.add_argument("-C", type=int, help="number of experts", default=20)
-    parser.add_argument("-k", type=int, help="number of selected experts", default=5)
+    parser.add_argument("-C", type=int, help="number of experts", default=8)
+    parser.add_argument("-k", type=int, help="number of selected experts", default=4)
     parser.add_argument("-L_T", type=int, help="number of layers for transformer in path prediction", default=1)
     parser.add_argument("-m", type=int, help="number of statistical travel time", default=5)
-
+    parser.add_argument("-load_balancing", type=bool, help="whether using load_balancing loss", default=False)
+    parser.add_argument("-load_balancing_weight", type=float, help="weight of load_balancing loss", default=0.05)
     parser.add_argument("-n_groups", type=int, help="number of groups for group normalization", default=8)
 
     # confidence level
