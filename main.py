@@ -1,4 +1,3 @@
-from os.path import join
 import torch
 from loader.dataset import TrajFastDataset
 from utils.argparser import get_argparser
@@ -21,10 +20,6 @@ if __name__ == "__main__":
 
     dataset = TrajFastDataset(args.d_name, args.path, device, is_pretrain=False)
     n_vertex = dataset.n_vertex
-    print(f"vertex: {n_vertex}")
-
-    with open(join(args.model_path, f"{args.model_name}.info"), "w") as f:
-        f.writelines(str(args))
 
     if args.method == "drl_path_prediction":
 
